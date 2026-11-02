@@ -14,6 +14,10 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    sunrise: '#F29A2E',
+    sunset: '#E2574C',
+    tint: '#E07A2F',
+    separator: '#E4E4E9',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +25,10 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    sunrise: '#FFB457',
+    sunset: '#FF7A6B',
+    tint: '#FF9A4D',
+    separator: '#2E3135',
   },
 } as const;
 
@@ -61,5 +69,4 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 560;
