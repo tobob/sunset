@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 
 import {
   getLastLocation,
@@ -15,6 +16,8 @@ const POSITION_TIMEOUT_MS = 15_000;
 const GEOCODE_TIMEOUT_MS = 5_000;
 /** A last-known fix younger than this is good enough to skip a fresh GPS request. */
 const LAST_KNOWN_MAX_AGE_MS = 10 * 60_000;
+/** On returning to the foreground, look for a new position only if the cached one is older than this. */
+const FOREGROUND_REFRESH_MS = 30 * 60_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -68,35 +71,53 @@ function isNear(a: StoredLocation, lat: number, lon: number) {
 
 let inFlight: Promise<SunLocationStatus> | null = null;
 
+/** Persists a location and pushes it to the widget right away. */
+function commit(latitude: number, longitude: number, name: string | null, updatedAt: number) {
+  const next: StoredLocation = { latitude, longitude, name, updatedAt };
+  saveLocation(next);
+  pushToWidget(next);
+}
+
 async function fetchLocation(): Promise<SunLocationStatus> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (!permission.granted) return 'denied';
 
-  let position = await Location.getLastKnownPositionAsync({
-    maxAge: LAST_KNOWN_MAX_AGE_MS,
-  }).catch(() => null);
-  if (!position) {
+  const prev = getLastLocation();
+  const cachedName = (lat: number, lon: number) =>
+    prev && isNear(prev, lat, lon) ? prev.name : null;
+
+  // 1. Any last known fix the OS already has (instant, no GPS). Sunrise/sunset barely change over
+  //    a few km, so this is good enough to fill the app and the widget immediately — even if the
+  //    user closes the app before a fresh fix or the place name arrives.
+  let position = await Location.getLastKnownPositionAsync().catch(() => null);
+  if (position && (!prev || position.timestamp > prev.updatedAt)) {
+    const { latitude, longitude } = position.coords;
+    commit(latitude, longitude, cachedName(latitude, longitude), position.timestamp);
+  }
+
+  // 2. A fresh, coarse fix if the last known one is missing or old. Low accuracy (Wi-Fi/cell)
+  //    resolves in a second or two instead of waiting for GPS.
+  if (!position || Date.now() - position.timestamp > LAST_KNOWN_MAX_AGE_MS) {
     try {
       position = await withTimeout(
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
         POSITION_TIMEOUT_MS,
       );
+      const { latitude, longitude } = position.coords;
+      commit(latitude, longitude, cachedName(latitude, longitude), Date.now());
     } catch {
-      // Fall back to any last known fix, however old.
-      position = await Location.getLastKnownPositionAsync().catch(() => null);
+      // Keep whatever we already have.
     }
   }
-  const prev = getLastLocation();
   if (!position) return prev ? 'ready' : 'error';
 
+  // 3. Place name last (needs network; optional). Update only if it changed.
   const { latitude, longitude } = position.coords;
-  const name =
-    (await placeName(latitude, longitude)) ??
-    (prev && isNear(prev, latitude, longitude) ? prev.name : null);
-
-  const next: StoredLocation = { latitude, longitude, name, updatedAt: Date.now() };
-  saveLocation(next);
-  pushToWidget(next);
+  const name = await placeName(latitude, longitude);
+  const current = getLastLocation();
+  if (name && current && current.name !== name) {
+    commit(current.latitude, current.longitude, name, current.updatedAt);
+  }
   return 'ready';
 }
 
@@ -112,8 +133,9 @@ function refreshShared(): Promise<SunLocationStatus> {
 
 /**
  * Returns the cached location immediately, then (unless `autoRefresh` is false)
- * refreshes it from the device: permission → last known / current position →
- * reverse geocode (optional, tolerated offline) → persisted + pushed to widget.
+ * refreshes it from the device: permission → last known position (pushed to the widget at once) →
+ * fresh coarse position if needed → reverse geocode (optional, tolerated offline). Every step is
+ * persisted and pushed to the widget immediately, so closing the app early still leaves it filled.
  */
 export function useSunLocation({ autoRefresh = true }: { autoRefresh?: boolean } = {}) {
   const location = useSyncExternalStore(subscribeLocation, getLastLocation);
@@ -128,15 +150,27 @@ export function useSunLocation({ autoRefresh = true }: { autoRefresh?: boolean }
 
   useEffect(() => {
     if (!autoRefresh) return;
-    // Push cached data to the widget right away so it's populated even offline.
     let active = true;
-    const cached = getLastLocation();
-    if (cached) pushToWidget(cached);
-    void refreshShared().then((next) => {
-      if (active) setStatus(next);
+    const run = () => {
+      // Push cached data to the widget right away so it's populated even offline, and so the
+      // timeline's "today" entry is rebuilt after a day change.
+      const cached = getLastLocation();
+      if (cached) pushToWidget(cached);
+      void refreshShared().then((next) => {
+        if (active) setStatus(next);
+      });
+    };
+    run();
+    // Refresh when returning to the app (e.g. after granting permission in Settings, or travelling).
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      const cached = getLastLocation();
+      if (!cached || Date.now() - cached.updatedAt > FOREGROUND_REFRESH_MS) run();
+      else pushToWidget(cached);
     });
     return () => {
       active = false;
+      sub.remove();
     };
   }, [autoRefresh]);
 
