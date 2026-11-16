@@ -24,7 +24,7 @@ Godziny wschodu i zachodu słońca dla bieżącej lokalizacji, liczone offline n
 
 ## Sklepy
 
-- **iOS:** App Store Review. Build 1 dostał „Guideline 2.1 – Information Needed” (prośba o nagranie ekranu z działaniem aplikacji i widgetu). Build 2 (1.0.0, poprawka widgetu) jest na EAS. Do zrobienia przez Boba: `eas submit`, podmiana buildu w ASC, nagranie, odpowiedź w Resolution Center.
+- **iOS:** w App Store jako „Sunset Info” 1.0 (READY_FOR_SALE): https://apps.apple.com/app/id6829735608 · ASC app 6829735608.
 - **Android:** nie wydana (brak konta Google Play / service account w EAS).
 
 ## Historia
@@ -32,3 +32,4 @@ Godziny wschodu i zachodu słońca dla bieżącej lokalizacji, liczone offline n
 - 2026-11-02 — build 1 (1.0.0) → App Store Review
 - 2026-11-03 — fix: widget od razu po pierwszym starcie pokazywał „Open Sunset to set location”; build 2 (1.0.0) na EAS (`eedf796d`)
 - 2026-11-16 — przeniesiona do studio (`studio/apps/sunset`)
+- 2026-11-16 — 1.0 opublikowana w App Store (Sunset Info); link w README i jako homepage repo

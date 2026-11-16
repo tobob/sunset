@@ -9,10 +9,17 @@
 </p>
 
 <p align="center">
+  <a href="https://apps.apple.com/app/id6829735608"><img src="https://tools.applemarketingtools.com/api/badges/download-on-the-app-store/black/en-us" height="48" alt="Download on the App Store" /></a>
+</p>
+
+<p align="center">
   <img src="docs/images/screenshot-home.png" width="300" alt="Sunset home screen showing sunrise and sunset times" />
 </p>
 
 ## Features
+
+Available on the [App Store](https://apps.apple.com/app/id6829735608) as **Sunset Info** (iPhone, free).
+
 
 - **Sunrise, sunset & day length** for your current location, plus solar noon, tomorrow's times and how much the day is growing or shrinking.
 - **Works offline.** Times are calculated on the device with the [NOAA solar position algorithm](https://gml.noaa.gov/grad/solcalc/calcdetails.html). The last known location is cached, so the app works with no network at all.
