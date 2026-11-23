@@ -6,8 +6,11 @@ versions are the store versions (`expo.version`). Store "What's New" texts per l
 
 ## [Unreleased]
 
+### Fixed
+- Home Screen and Lock Screen widgets get the location right after the first launch, instead of waiting for the next update.
+
 ## [1.0.0] - 2026-11-03
 
 ### Added
 - First release (App Store: Sunset Info): offline sunrise and sunset times for the current location.
-- Home Screen and Lock Screen widgets, updated with the location right after the first launch.
+- Home Screen and Lock Screen widgets.
